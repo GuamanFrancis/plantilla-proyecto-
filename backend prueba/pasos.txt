@@ -1,0 +1,128 @@
+=============================================================================
+REUNIÓN DE SINCRONIZACIÓN: BACKEND -> FRONTEND
+PROYECTO: Sistema de Citas Médicas
+PARTICIPANTES: Alex (Backend) y Tú (Frontend)
+=============================================================================
+
+Alex (Backend): 
+¡Hola! Ya tengo el backend listo y corriendo en http://localhost:3000. 
+Es una API REST con Node, Express y SQLite. Todo está protegido con JWT. 
+¿Cómo tienes pensado armar el frontend con React y TypeScript?
+
+Tú (Frontend): 
+¡Excelente! Voy a inicializar el proyecto desde cero. Pensaba usar Vite 
+para crear la app de React con TypeScript porque es súper rápido. 
+¿Qué me recomiendas para manejar las peticiones y el estado?
+
+Alex (Backend): 
+Buena elección con Vite (puedes usar `npm create vite@latest mi-app -- --template react-ts`).
+Para las peticiones, te recomiendo 100% usar **Axios**. Te va a facilitar mucho la vida 
+porque puedes configurar un "Interceptor". Como todos mis endpoints (menos el login) 
+requieren un token JWT, con un interceptor de Axios puedes hacer que el token se adjunte 
+automáticamente a cada petición sin que tengas que ponerlo a mano cada vez.
+
+Tú (Frontend): 
+Anotado, Axios con interceptores. ¿Y para el manejo del estado global y la caché? 
+¿Redux, Zustand, Context?
+
+Alex (Backend): 
+Para este proyecto, que es un CRUD clásico (Pacientes, Especialidades, Citas), 
+te sugiero **TanStack Query (React Query)**. Te va a manejar los estados de carga (isLoading), 
+errores (isError) y la caché automáticamente. Para el estado del usuario logueado, 
+un simple React Context o Zustand es más que suficiente.
+
+Tú (Frontend): 
+Perfecto. ¿Cómo es el flujo de autenticación exactamente? ¿Qué me devuelve tu API?
+
+Alex (Backend): 
+El flujo es así:
+1. Haces un POST a `/api/auth/login` con `{ email, clave }`. (Usa demo@demo.com / Demo1234!).
+2. Si está todo bien, te devuelvo un JSON: `{ "token": "eyJhb...", "user": { "id": 1, "nombre": "Demo", ... } }`.
+3. Tú guardas ese `token` en el `localStorage` (o `sessionStorage`).
+4. A partir de ahí, en cada petición a `/api/pacientes`, `/api/citas`, etc., debes enviar el header: 
+   `Authorization: Bearer <TU_TOKEN>`.
+5. Si el token expira o es inválido, mi API te devolverá un error HTTP 401. Ahí tu frontend 
+   debería atrapar ese 401, borrar el token del localStorage y redirigir al usuario a la pantalla de Login.
+
+Tú (Frontend): 
+Clarísimo. ¿Me pasas las interfaces de TypeScript para ir tipando mis modelos?
+
+Alex (Backend): 
+¡Claro! Aquí tienes las principales para que las pongas en un archivo `src/types/index.ts`:
+
+export interface User {
+  id: number;
+  nombre: string;
+  apellido: string;
+  email: string;
+}
+
+export interface Paciente {
+  id: number;
+  nombre: string;
+  apellido: string;
+  cedula: string;
+  telefono: string;
+}
+
+export interface Especialidad {
+  id: number;
+  nombre: string;
+  descripcion: string;
+}
+
+export interface Cita {
+  id: number;
+  pacienteId: number;
+  especialidadId: number;
+  fecha: string; // Viene como string ISO 8601
+  motivo: string;
+  paciente?: Paciente; // Cuando hagas GET, te incluyo los datos del paciente
+  especialidad?: Especialidad; // Y los de la especialidad
+}
+
+Tú (Frontend): 
+Genial. ¿Cómo me recomiendas estructurar las carpetas en React para no hacer un desastre?
+
+Alex (Backend): 
+Te sugiero una arquitectura basada en "Features" (características). Algo así:
+
+src/
+ ├── assets/
+ ├── components/       # Componentes UI genéricos (Botones, Modales, Inputs)
+ ├── config/           # Configuración de Axios (axios.ts)
+ ├── context/          # AuthContext.tsx (para saber si el usuario está logueado)
+ ├── features/         # Aquí va lo pesado
+ │    ├── auth/        # Login.tsx, auth.services.ts
+ │    ├── pacientes/   # PacientesList.tsx, PacienteForm.tsx, pacientes.services.ts
+ │    ├── citas/       # CitasList.tsx, CitaForm.tsx, citas.services.ts
+ │    └── especialidades/
+ ├── layouts/          # MainLayout.tsx (Sidebar, Navbar)
+ ├── routes/           # AppRouter.tsx (React Router DOM)
+ └── types/            # index.ts (Las interfaces que te pasé)
+
+Tú (Frontend): 
+Me gusta, está muy ordenado. ¿Algún detalle con los errores?
+
+Alex (Backend): 
+Sí, mi API siempre devuelve los errores con esta estructura cuando falla (400, 401, 404, 500):
+`{ "error": "TIPO_DE_ERROR", "message": "Mensaje legible", "details": [...] }`
+Especialmente en los POST/PUT, si mandas un dato mal, te devolveré un 400 VALIDATION_ERROR. 
+Asegúrate de mostrar ese `message` en un Toast o alerta en el frontend.
+
+Tú (Frontend): 
+Perfecto. Entonces mi plan de ataque será:
+1. Crear proyecto con Vite + React + TS.
+2. Instalar dependencias: `axios`, `react-router-dom`, `@tanstack/react-query`, `lucide-react` (iconos) y `tailwindcss` (para estilos rápidos).
+3. Configurar la instancia de Axios con la baseURL (`http://localhost:3000/api`) y el interceptor del token.
+4. Crear el AuthContext y las rutas protegidas (si no hay token, redirigir a /login).
+5. Hacer la pantalla de Login.
+6. Hacer el Layout principal (Sidebar con menú).
+7. Desarrollar el CRUD de Pacientes (Listado y Formulario).
+8. Desarrollar el CRUD de Especialidades.
+9. Desarrollar el CRUD de Citas (que necesitará cargar pacientes y especialidades en selects).
+
+Alex (Backend): 
+¡Ese es exactamente el camino! Empieza por el Login y el enrutamiento protegido. 
+Una vez que tengas eso, los CRUDs salen solos. ¡Cualquier cosa me avisas y revisamos los endpoints!
+=============================================================================

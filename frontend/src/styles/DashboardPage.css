@@ -1,0 +1,7 @@
+.dashboard-page { display: grid; gap: 1.25rem; }
+.dashboard-page__title { font-size: 1.55rem; color: var(--text-dark, #1f2937); font-weight: 700; }
+.dashboard-page__subtitle { color: var(--text-muted, #6b7280); font-size: 0.95rem; margin-top: 0.25rem; }
+.dashboard-page__stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; }
+.dashboard-page__stat-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); padding: 1.5rem 1.25rem; text-align: center; }
+.dashboard-page__stat-label { font-size: 0.9rem; color: var(--text-muted, #6b7280); font-weight: 600; margin-bottom: 0.5rem; }
+.dashboard-page__stat-value { font-size: 2.5rem; font-weight: 800; color: var(--accent, #3b4ac7); }

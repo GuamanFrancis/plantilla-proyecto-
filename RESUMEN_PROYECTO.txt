@@ -1,0 +1,170 @@
+================================================================================
+  RESUMEN DEL PROYECTO — FRONTEND PLANTILLA EFC 2025-B
+  Sistema de gestión de citas médicas (Caso 3 del PDF)
+  Aplica para CUALQUIER caso del examen cambiando nombres
+================================================================================
+
+TECNOLOGÍAS UTILIZADAS
+─────────────────────
+- React 19 + TypeScript
+- Vite (herramienta de desarrollo y build)
+- React Router DOM v7 (navegación entre páginas)
+- Axios (llamadas HTTP al backend)
+- React Hot Toast (instalado, pendiente de integrar con toast en lugar de alert)
+
+BACKEND (ya hecho — solo como referencia)
+─────────────────────────────────────────
+- URL base: http://localhost:3000/api
+- Puerto: 3000
+- Credenciales de prueba: demo@demo.com / Demo1234!
+- JWT: el token dura 8h, se manda como "Authorization: Bearer <token>"
+
+ENDPOINTS DEL BACKEND
+─────────────────────
+  POST   /api/auth/login          → { email, clave }  →  { token, user }
+  GET    /api/auth/me             → (necesita token)  →  { user }
+  POST   /api/auth/logout         → (necesita token)  →  { message }
+
+  GET    /api/pacientes           → lista de pacientes (con sus citas)
+  POST   /api/pacientes           → { nombre, apellido, cedula, telefono, email? }
+  PUT    /api/pacientes/:id       → campos opcionales
+  DELETE /api/pacientes/:id       → elimina
+
+  GET    /api/especialidades      → lista de especialidades
+  POST   /api/especialidades      → { nombre, descripcion? }
+  PUT    /api/especialidades/:id  → campos opcionales
+  DELETE /api/especialidades/:id  → elimina
+
+  GET    /api/citas               → lista de citas (con paciente y especialidad incluidos)
+  POST   /api/citas               → { pacienteId, especialidadId, fecha, motivo? }
+  DELETE /api/citas/:id           → elimina  (⚠️ Citas NO tiene PUT/update)
+
+FORMA DE LAS RESPUESTAS DEL BACKEND
+────────────────────────────────────
+  Éxito:  { success: true,  data: <objeto o array> }
+  Error:  { success: false, error: { code, message, details? } }
+  OJO:    Para extraer la data → res.data.data  (dos .data: uno Axios, uno envelope)
+
+ESTRUCTURA ACTUAL DE CARPETAS (src/)
+──────────────────────────────────────
+  src/
+  ├── api/
+  │   ├── client.ts             ✅ Axios + interceptores (puerto 3000)
+  │   ├── auth.api.ts           ✅ loginApi() + logoutApi()
+  │   ├── pacientes.api.ts      ✅ CRUD completo de pacientes
+  │   ├── especialidades.api.ts ✅ CRUD completo de especialidades
+  │   └── citas.api.ts          ✅ getCitas, createCita, deleteCita
+  ├── context/
+  │   └── AuthContext.tsx       ✅ AuthProvider + estado global
+  ├── hooks/
+  │   └── useAuth.ts            ✅ Hook para usar el contexto
+  ├── pages/
+  │   ├── AppLayout.tsx         ✅ Navbar + sidebar colapsable + Outlet
+  │   ├── LoginPage.tsx         ✅ Formulario funcional con manejo de errores
+  │   ├── DashboardPage.tsx     ✅ useAuth + conteos reales con Promise.all
+  │   ├── PacientesPage.tsx     ✅ CRUD COMPLETO conectado al backend real
+  │   ├── EspecialidadesPage.tsx ✅ CRUD COMPLETO conectado al backend real
+  │   ├── CitasPage.tsx         ✅ Crear + eliminar, selects reales del backend
+  │   └── NotFoundPage.tsx      ✅ básica
+  ├── routes/
+  │   ├── PrivateRoute.tsx      ✅ redirige a /login si no hay sesión
+  │   ├── PublicRoute.tsx       ✅ redirige a / si ya hay sesión activa
+  │   └── router.tsx            ✅ rutas con AppLayout anidado
+  ├── styles/
+  │   ├── AppLayout.css         ✅ CSS variables + navbar blanco + sidebar oscuro
+  │   ├── LoginPage.css         ✅ card centrada
+  │   ├── DashboardPage.css     ✅ creado
+  │   ├── PacientesPage.css     ✅ creado
+  │   ├── EspecialidadesPage.css ✅ creado
+  │   ├── CitasPage.css         ✅ creado
+  │   └── NotFoundPage.css      ✅ creado
+  ├── types/
+  │   ├── api.ts                ✅ ApiResponse<T> + ApiError
+  │   ├── AuthContext.ts        ✅ AuthContextType
+  │   └── entities.ts           ✅ User, LoginResponse, Paciente, Especialidad, Cita
+  ├── utils/
+  │   └── storage.ts            ✅ saveToken/getToken/removeToken
+  ├── App.tsx                   ✅ solo monta RouterProvider
+  └── main.tsx                  ✅ StrictMode > AuthProvider > App
+
+QUÉ HACE CADA ARCHIVO (resumen rápido)
+────────────────────────────────────────
+utils/storage.ts           → TOKEN_KEY = 'auth_token'. Guarda/lee/borra JWT del localStorage.
+types/api.ts               → ApiResponse<T> + ApiError (forma del backend)
+types/entities.ts          → User, LoginResponse, Paciente, Especialidad, Cita
+types/AuthContext.ts        → AuthContextType: user, token, isLoading, login(), logout()
+api/client.ts              → Axios con baseURL 3000. Interceptor añade Bearer, 401 desloguea.
+api/auth.api.ts            → loginApi(email,clave) + logoutApi()
+api/pacientes.api.ts       → CreatePacienteDto, UpdatePacienteDto, getPacientes,
+                             createPaciente, updatePaciente(id,data), deletePaciente(id)
+context/AuthContext.tsx    → AuthProvider con useEffect que restaura sesión via /auth/me
+hooks/useAuth.ts           → const { user, login, logout } = useAuth()
+routes/PrivateRoute.tsx    → isLoading→spinner | token→Outlet | sin token→/login
+routes/PublicRoute.tsx     → token→/ | sin token→Outlet (previene volver al /login)
+routes/router.tsx          → PublicRoute>/login | PrivateRoute>AppLayout>/,/pacientes,
+                             /especialidades,/citas | *>NotFoundPage
+pages/AppLayout.tsx        → navbar + aside colapsable (useState sidebarOpen) + <Outlet>
+pages/LoginPage.tsx        → form con useState email+clave+error+isLoading, llama loginApi
+pages/PacientesPage.tsx    → CRUD real: 4 useState, EMPTY_FORM, handleChange genérico,
+                             handleSubmit (crea o edita según editingId), handleEdit,
+                             handleDelete con confirm()
+
+PATRONES IMPORTANTES (para recordar en el examen)
+──────────────────────────────────────────────────
+1. handleChange GENÉRICO (un solo handler para todos los inputs):
+   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
+     const { name, value } = e.target
+     setFormData(prev => ({ ...prev, [name]: value }))
+   }
+   ⚠️  El input DEBE tener el atributo name="<campo>" igual al nombre en formData
+
+2. Crear VS editar con un solo handleSubmit:
+   if (editingId !== null) {
+     await updatePaciente(editingId, formData)  // editar
+   } else {
+     await createPaciente(formData)             // crear
+   }
+
+3. Doble .data al retornar de api:
+   const res = await client.get('/pacientes')
+   return res.data.data   // res.data = envelope, .data = el array/objeto real
+
+4. useEffect para cargar lista al montar la página:
+   useEffect(() => { loadItems() }, [])    // [] = solo una vez al montar
+
+5. Selects en CitasPage cargan datos reales:
+   const [pacientes, setPacientes] = useState<Paciente[]>([])
+   const [especialidades, setEspecialidades] = useState<Especialidad[]>([])
+   useEffect(() => { Promise.all([getPacientes(), getEspecialidades()]).then... }, [])
+
+ESTADO FINAL — PROYECTO 100% COMPLETADO ✅
+───────────────────────────────────────────
+[✅] Paso 14 — api/especialidades.api.ts + EspecialidadesPage.tsx (CRUD completo)
+[✅] Paso 15 — api/citas.api.ts + CitasPage.tsx (crear + eliminar, selects reales)
+[✅] Paso 16 — DashboardPage.tsx con useAuth + conteos reales del backend
+
+ADAPTACIÓN PARA OTROS CASOS DEL EXAMEN
+────────────────────────────────────────
+Solo cambias nombres en: router.tsx, entities.ts, y los archivos de api/pages
+
+  Caso 1 - Matrículas:     Estudiante, Materia, Matricula
+  Caso 2 - Renta carros:   Cliente, Vehiculo, Reserva
+  Caso 3 - Citas médicas:  Paciente, Especialidad, Cita  ← ESTE
+  Caso 4 - Tickets:        Cliente, Tecnico, Ticket
+  Caso 5 - Conferencias:   Conferencista, Auditorio, Reserva
+
+  Lo que NUNCA cambia entre casos:
+  - El login (LoginPage, auth.api.ts, AuthContext, useAuth, storage)
+  - PrivateRoute y PublicRoute
+  - AppLayout (solo cambia los textos de la sidebar)
+  - client.ts (solo el puerto si difiere)
+
+ERRORES CONOCIDOS Y CORRECCIONES
+──────────────────────────────────
+✅  client.ts — puerto corregido a 3000 (estaba en 8080)
+✅  client.ts — usa getToken() correcto, no localStorage.getToken()
+✅  PublicRoute — previene volver a /login con sesión activa
+✅  AuthContext — export named (no default) para que useAuth pueda importarlo
+✅  AppLayout anidado en router — navbar/sidebar persiste entre páginas privadas
+
+ÚLTIMA ACTUALIZACIÓN: 24/02/2026 — PROYECTO 100% COMPLETADO (Pasos 1-16)

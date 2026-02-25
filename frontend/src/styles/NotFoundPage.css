@@ -1,0 +1,9 @@
+.not-found-page { max-width: 680px; margin: 4rem auto; padding: 0 1rem; }
+.not-found-page__panel { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); text-align: center; padding: 2.2rem 1.2rem; }
+.not-found-page__pill { display: inline-flex; align-items: center; padding: 0.2rem 0.55rem; border-radius: 999px; font-size: 0.75rem; background: #e0e7ff; color: #3730a3; font-weight: 700; margin-bottom: 1rem; }
+.not-found-page__title { font-size: 1.55rem; color: var(--text-dark, #1f2937); font-weight: 700; }
+.not-found-page__subtitle { color: var(--text-muted, #6b7280); font-size: 0.9rem; margin-top: 0.75rem; }
+.not-found-page__actions { display: flex; gap: 0.55rem; justify-content: center; flex-wrap: wrap; margin-top: 1.25rem; }
+.not-found-page__btn { border-radius: 8px; cursor: pointer; padding: 0.55rem 0.85rem; font-size: 0.85rem; font-weight: 600; text-decoration: none; }
+.not-found-page__btn--primary { background: var(--accent, #3b4ac7); color: #fff; }
+.not-found-page__btn--neutral { background: #eef2ff; color: #2b3476; }

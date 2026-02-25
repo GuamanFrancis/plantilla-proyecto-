@@ -1,0 +1,21 @@
+.citas-page { display: grid; gap: 1.25rem; }
+.citas-page__title { font-size: 1.55rem; color: var(--text-dark, #1f2937); font-weight: 700; }
+.citas-page__subtitle { color: var(--text-muted, #6b7280); font-size: 0.9rem; margin-top: 0.25rem; }
+.citas-page__panel { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); padding: 1rem; }
+.citas-page__panel-title { font-size: 1.05rem; color: var(--text-dark, #1f2937); font-weight: 700; }
+.citas-page__form { margin-top: 0.75rem; }
+.citas-page__form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.85rem; }
+.citas-page__field { display: grid; gap: 0.35rem; }
+.citas-page__field--full { grid-column: 1 / -1; }
+.citas-page__field label { font-size: 0.86rem; color: #374151; font-weight: 600; }
+.citas-page__field input, .citas-page__field select, .citas-page__field textarea { width: 100%; border: 1px solid #d1d5db; border-radius: 8px; padding: 0.55rem 0.75rem; font: inherit; resize: vertical; background: #fff; }
+.citas-page__field input:focus, .citas-page__field select:focus, .citas-page__field textarea:focus { outline: none; border-color: var(--accent, #3b4ac7); box-shadow: 0 0 0 3px rgba(59,74,199,0.15); }
+.citas-page__actions { display: flex; gap: 0.55rem; flex-wrap: wrap; margin-top: 0.85rem; }
+.citas-page__btn { border: none; border-radius: 8px; cursor: pointer; padding: 0.55rem 0.85rem; font-size: 0.85rem; font-weight: 600; }
+.citas-page__btn--primary { background: var(--accent, #3b4ac7); color: #fff; }
+.citas-page__btn--danger { background: #fee2e2; color: #b91c1c; }
+.citas-page__table-wrap { overflow-x: auto; margin-top: 0.75rem; }
+.citas-page__table { width: 100%; border-collapse: collapse; min-width: 700px; }
+.citas-page__table th, .citas-page__table td { text-align: left; padding: 0.72rem; border-bottom: 1px solid #e5e7eb; font-size: 0.9rem; }
+.citas-page__table th { color: #475569; font-weight: 700; background: #f8fafc; }
+.citas-page__empty { color: #6b7280; font-size: 0.9rem; margin-top: 0.75rem; }

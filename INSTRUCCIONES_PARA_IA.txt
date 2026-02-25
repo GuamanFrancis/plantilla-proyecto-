@@ -1,0 +1,226 @@
+================================================================================
+  BRIEFING COMPLETO PARA RETOMAR EL PROYECTO — FRONTEND EFC 2025-B
+  Si lees esto en un chat nuevo, aquí está TODO lo que necesitas saber
+  ÚLTIMA ACTUALIZACIÓN: 24/02/2026 — Paso 13 completado
+================================================================================
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CONTEXTO GENERAL
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PROYECTO: Frontend para examen de fin de carrera (EFC 2025-B) de la ESFOT
+OBJETIVO: Crear una plantilla de frontend que funcione para CUALQUIERA de los
+          5 casos del PDF del examen, cambiando solo nombres de entidades.
+STACK: React 19 + TypeScript + Vite + React Router + Axios + CSS puro
+BACKEND: Ya está hecho, corre en http://localhost:3000/api
+CASO ACTUAL: Caso 3 del PDF — Sistema de gestión de citas médicas
+  - Entidades: User, Paciente, Especialidad, Cita
+  - Login: demo@demo.com / Demo1234!
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+LO QUE YA ESTÁ HECHO (Pasos 1-13 completados)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ Estructura de carpetas: api, context, hooks, pages, routes, styles, types, utils
+✅ Dependencias instaladas: react-router-dom, axios, react-hot-toast
+✅ types/api.ts: ApiResponse<T>, ApiError
+✅ types/entities.ts: User, LoginResponse, Paciente, Especialidad, Cita
+✅ types/AuthContext.ts: AuthContextType (user,token,isLoading,login,logout)
+✅ utils/storage.ts: saveToken, getToken, removeToken (localStorage)
+✅ api/client.ts: Axios con interceptores (token automático + 401 redirect)
+✅ api/auth.api.ts: loginApi() + logoutApi()
+✅ api/pacientes.api.ts: CreatePacienteDto, UpdatePacienteDto, getPacientes,
+     createPaciente, updatePaciente(id,data), deletePaciente(id)
+✅ context/AuthContext.tsx: AuthProvider con restauración de sesión via /auth/me
+✅ hooks/useAuth.ts: const { user, login, logout } = useAuth()
+✅ routes/PrivateRoute.tsx: isLoading→spinner | token→Outlet | no token→/login
+✅ routes/PublicRoute.tsx: token→/ | no token→Outlet (previene volver al login)
+✅ routes/router.tsx: PublicRoute>/login | PrivateRoute>AppLayout> / /pacientes /citas
+✅ pages/AppLayout.tsx: navbar blanco + sidebar oscuro colapsable (useState toggle)
+✅ styles/AppLayout.css: CSS variables, sidebar animado (0.25s transition)
+✅ pages/LoginPage.tsx: form con email+clave, llama loginApi, navega a /
+✅ styles/LoginPage.css + DashboardPage.css + PacientesPage.css + EspecialidadesPage.css
+     + CitasPage.css + NotFoundPage.css — todos creados
+✅ pages/PacientesPage.tsx: CRUD COMPLETO conectado al backend real
+     (4 useState, EMPTY_FORM, handleChange genérico, handleSubmit crea/edita,
+      handleEdit rellena form, handleDelete con confirm(), loadPacientes en useEffect)
+✅ pages/NotFoundPage.tsx: básica
+✅ App.tsx + main.tsx: RouterProvider + AuthProvider
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+LO QUE FALTA (Pasos 14-16 pendientes)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ PASO 14: api/especialidades.api.ts + EspecialidadesPage.tsx
+   - DTO: { nombre: string, descripcion?: string }
+   - Funciones: getEspecialidades, createEspecialidad, updateEspecialidad(id,data), deleteEspecialidad(id)
+   - Página: copiar PacientesPage y adaptar campos (solo nombre + descripcion)
+   - IMPORTANTE: descripcion usa <textarea> en vez de <input>
+
+✅ PASO 15: api/citas.api.ts + CitasPage.tsx
+   - DTO: { pacienteId: number, especialidadId: number, fecha: string, motivo?: string }
+   - Funciones: getCitas, createCita, deleteCita  (⚠️ NO hay updateCita)
+   - Página: cargar pacientes Y especialidades en useEffect para los <select>
+   - Tabla: mostrar cita.paciente.nombre + cita.especialidad.nombre (backend los incluye)
+   - Solo crear y eliminar (sin editar)
+
+✅ PASO 16: DashboardPage.tsx con datos reales
+   - useAuth() muestra nombre del usuario logueado
+   - Promise.all carga los 3 conteos reales del backend
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PREFERENCIAS DEL USUARIO — MUY IMPORTANTE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. NO CREAR ARCHIVOS AUTOMÁTICAMENTE
+   - El usuario quiere que TÚ LE DIGAS QUÉ HACER paso a paso
+   - Dale el código en el chat, él lo copia y pega
+   - Explica línea por línea qué hace cada cosa
+
+2. ESTRUCTURA DE ARCHIVOS
+   - Cada página: un .tsx + un .css separado
+   - Los CSS van en src/styles/ (no junto a las páginas)
+   - Los import de CSS son: import '../styles/NombrePagina.css'
+
+3. ESTILO DE EXPLICACIÓN
+   - Usa analogías simples: "el contexto es la recepcionista", "axios es el cartero"
+   - Código limpio con comentarios
+   - Explica el "por qué", no solo el "cómo"
+
+4. ORDEN DE TRABAJO
+   - Paso a paso, uno a la vez
+   - Pide confirmación "listo" antes de continuar al siguiente paso
+   - Actualiza RESUMEN_PROYECTO.txt y GUIA_PASO_A_PASO.txt después de cada paso
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ARCHIVOS CLAVE PARA REVISAR
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ANTES de continuar, lee estos 3 archivos para entender TODO el proyecto:
+
+1. RESUMEN_PROYECTO.txt
+   - Estructura completa del proyecto
+   - Todos los endpoints del backend con su formato
+   - Estado actual: qué está ✅ y qué está ⏳
+
+2. GUIA_PASO_A_PASO.txt
+   - El paso a paso completo del 1 al 16
+   - Código exacto de cada archivo creado
+   - Explicaciones del "por qué" de cada cosa
+
+3. frontend/src/ (carpeta)
+   - Lee TODOS los archivos actuales para ver cómo están hechos
+   - Especialmente: pages/LoginPage.tsx, pages/AppLayout.tsx, api/client.ts
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CÓMO RETOMAR EL TRABAJO — INSTRUCCIONES EXACTAS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. Lee los 3 archivos mencionados arriba (RESUMEN_PROYECTO.txt, GUIA_PASO_A_PASO.txt,
+   y recorre frontend/src/)
+
+2. Confirma con el usuario que entendiste dónde quedó: "Veo que completaste hasta
+   el paso 11 (AppLayout). El siguiente paso es el 12: DashboardPage. ¿Continuamos?"
+
+3. Si dice "sí", comienza con el PASO 12:
+   a) Explica qué es el DashboardPage y por qué es simple
+   b) Dale el código de DashboardPage.tsx con comentarios
+   c) Dale el código de DashboardPage.css
+   d) Pídele que te diga "listo" cuando lo haya creado
+   e) Actualiza los archivos de guardado (RESUMEN_PROYECTO.txt y GUIA_PASO_A_PASO.txt)
+   f) Continúa al paso 13
+
+4. Recuerda siempre:
+   - Analogías para explicar conceptos ("el estado es como una cajita de memoria")
+   - Código con comentarios detallados
+   - No crees archivos tú, dale el código al usuario para que copie-pegue
+   - Un paso a la vez, espera su confirmación
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PATRONES IMPORTANTES DEL BACKEND (info clave para las páginas CRUD)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+TODAS las respuestas del backend tienen esta forma:
+  Éxito:  { success: true,  data: <objeto o array> }
+  Error:  { success: false, error: { code, message, details? } }
+
+Axios guarda la respuesta HTTP en .data, así que para llegar a los datos:
+  const res = await client.get('/pacientes')
+  const pacientes = res.data.data  // ← DOS .data (uno de axios, otro del backend)
+
+ENDPOINTS POR MÓDULO:
+  Pacientes:
+    GET    /api/pacientes       → lista con { success: true, data: Paciente[] }
+    GET    /api/pacientes/:id   → uno con { success: true, data: Paciente }
+    POST   /api/pacientes       → body { nombre, apellido, cedula, telefono, email? }
+    PUT    /api/pacientes/:id   → body con campos opcionales
+    DELETE /api/pacientes/:id   → { success: true, data: { message: "..." } }
+
+  Especialidades: mismo patrón, campos { nombre, descripcion? }
+
+  Citas:
+    GET    /api/citas           → lista con paciente y especialidad incluidos
+    GET    /api/citas/:id
+    POST   /api/citas           → body { pacienteId, especialidadId, fecha, motivo? }
+    DELETE /api/citas/:id       → NO TIENE PUT/UPDATE
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PATRÓN PARA CREAR PÁGINAS CRUD (esqueleto reutilizable)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. Crear api/[modulo].api.ts primero con las funciones HTTP
+2. En la página usar estos estados:
+   - const [items, setItems] = useState<Entidad[]>([])          // lista
+   - const [formData, setFormData] = useState<CrearDto>({...})  // formulario
+   - const [editingId, setEditingId] = useState<number | null>(null) // si edita
+   - const [isLoading, setIsLoading] = useState(false)
+
+3. useEffect para cargar datos al montar: useEffect(() => { loadItems() }, [])
+
+4. Funciones:
+   - async loadItems() → llama a api.getAll(), setItems(data)
+   - async handleSubmit() → si editingId existe llama update, si no llama create
+   - async handleDelete(id) → confirma con confirm(), llama api.delete(id)
+   - handleEdit(item) → setFormData(item), setEditingId(item.id) (rellena form)
+   - handleCancel() → limpia formData, setEditingId(null)
+
+5. JSX: <form> + <table> en el mismo componente, no separar
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ADAPTACIÓN PARA OTROS CASOS DEL EXAMEN
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+El día del examen, el usuario solo cambia:
+  - types/entities.ts: nombres de interfaces y campos
+  - routes/router.tsx: paths y nombres de páginas
+  - pages/AppLayout.tsx: nombre de la app en navbar-brand + enlaces en sidebar
+  - Copiar PacientesPage → cambiar nombres de variables y campos del form
+
+TODO LO DEMÁS (AuthContext, client.ts, storage.ts, PrivateRoute, PublicRoute,
+LoginPage) es IDÉNTICO en los 5 casos del examen.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+COMANDOS ÚTILES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+cd "c:\Users\cuent\Desktop\chatgpt con react and ts\frontend"
+npm run dev          # arranca el frontend en http://localhost:5173
+
+cd "c:\Users\cuent\Desktop\chatgpt con react and ts\backend prueba"
+npm run dev          # arranca el backend en http://localhost:3000
+
+Credenciales del backend: demo@demo.com / Demo1234!
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ERRORES COMUNES QUE EL USUARIO YA CORRIGIÓ (no volver a mencionarlos)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ client.ts: puerto es 3000, no 8080
+✅ client.ts: usa getToken() de storage.ts, no localStorage.getItem('token')
+✅ PublicRoute creado para evitar ir a /login con sesión activa
+✅ AppLayout anidado en router para que navbar/sidebar sean fijos
+✅ CSS en carpeta styles/ separada, no junto a los .tsx
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SIGUIENTE ACCIÓN INMEDIATA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Cuando el usuario abra un chat nuevo y te dé este archivo:
+
+El proyecto está 100% terminado. Todos los pasos (1-16) están completados.
+Si el usuario quiere continuar, puede enfocarse en:
+- Pruebas manuales de la app (login, CRUD de las 3 entidades)
+- Deploy a Vercel/Netlify para el frontend
+- Subir a GitHub con commits organizados
+
+================================================================================
+FIN DEL BRIEFING — Si llegaste hasta aquí, estás listo para continuar
+================================================================================

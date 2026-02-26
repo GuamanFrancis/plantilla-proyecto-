@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: backend-citas
+    runtime: node
+    rootDir: backend prueba
+    buildCommand: npm install && npm run prisma:generate && npm run build
+    startCommand: npx prisma db push && npm run seed && node dist/server.js
+    envVars:
+      - key: DATABASE_URL
+        value: file:./dev.db
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 8h
+      - key: NODE_ENV
+        value: production

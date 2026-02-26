@@ -1,0 +1,1300 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║            GUÍA COMPLETA EFC 2026 — REACT + TYPESCRIPT + VITE              ║
+║            Copy-paste. Solo cambia los nombres de entidades.               ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+PATRON DEL EXAMEN (siempre igual):
+  - EntityA  → CRUD simple con editar (ej: Paciente, Estudiante, Cliente)
+  - EntityB  → CRUD simple con editar (ej: Especialidad, Materia, Vehiculo)
+  - EntityC  → Solo crear/borrar, tiene selects de A y B (ej: Cita, Matricula, Reserva)
+
+  Para adaptar esta guía al caso que te toque:
+  1. Reemplaza "Entidad" por el nombre real (Estudiante, Cliente, etc.)
+  2. Reemplaza "entidad" (minúscula) por el nombre en minúscula
+  3. Cambia los campos del formulario por los campos reales del backend
+  4. Cambia las rutas (/entidades) por las que use tu backend
+
+════════════════════════════════════════════════════════════════════════════════
+PASO 1 — CREAR PROYECTO E INSTALAR DEPENDENCIAS
+════════════════════════════════════════════════════════════════════════════════
+
+  # En la carpeta donde quieres crear el proyecto:
+  npm create vite@latest frontend -- --template react-ts
+  cd frontend
+  npm install axios react-hot-toast react-router-dom
+
+  # Verifica que funcione:
+  npm run dev
+  # Abre: http://localhost:5173
+
+════════════════════════════════════════════════════════════════════════════════
+PASO 2 — CREAR ESTRUCTURA DE CARPETAS
+════════════════════════════════════════════════════════════════════════════════
+
+  # Desde dentro de la carpeta frontend:
+  mkdir src\api
+  mkdir src\context
+  mkdir src\hooks
+  mkdir src\pages
+  mkdir src\routes
+  mkdir src\styles
+  mkdir src\types
+  mkdir src\utils
+
+  # Estructura final de src/:
+  src/
+    api/
+      auth.api.ts
+      client.ts
+      entidadA.api.ts        ← archivo por cada entidad
+      entidadB.api.ts
+      entidadC.api.ts
+    context/
+      AuthContext.tsx
+    hooks/
+      useAuth.ts
+    pages/
+      AppLayout.tsx
+      LoginPage.tsx
+      DashboardPage.tsx
+      EntidadAPage.tsx       ← página por cada entidad
+      EntidadBPage.tsx
+      EntidadCPage.tsx
+      NotFoundPage.tsx
+    routes/
+      PrivateRoute.tsx
+      PublicRoute.tsx
+      router.tsx
+    styles/
+      AppLayout.css
+      LoginPage.css
+      EntidadAPage.css       ← CSS por cada entidad
+      EntidadBPage.css
+      EntidadCPage.css
+      DashboardPage.css
+      NotFoundPage.css
+    types/
+      api.ts
+      AuthContext.ts
+      entities.ts
+    utils/
+      storage.ts
+    App.tsx
+    main.tsx
+
+════════════════════════════════════════════════════════════════════════════════
+PASO 3 — CREA EL ARCHIVO .env
+════════════════════════════════════════════════════════════════════════════════
+
+  Crea: frontend/.env
+  ─────────────────────────────────────────────
+  VITE_API_URL=http://localhost:3000/api
+  ─────────────────────────────────────────────
+
+════════════════════════════════════════════════════════════════════════════════
+PASO 4 — ARCHIVOS QUE NUNCA CAMBIAN (copia tal cual)
+════════════════════════════════════════════════════════════════════════════════
+
+──────────────────────────────────────────────────────────────────────────────
+  ARCHIVO: src/utils/storage.ts
+──────────────────────────────────────────────────────────────────────────────
+const TOKEN_KEY = 'auth_token'
+
+export function saveToken(token: string): void {
+  localStorage.setItem(TOKEN_KEY, token)
+}
+
+export function getToken(): string | null {
+  return localStorage.getItem(TOKEN_KEY)
+}
+
+export function removeToken(): void {
+  localStorage.removeItem(TOKEN_KEY)
+}
+
+──────────────────────────────────────────────────────────────────────────────
+  ARCHIVO: src/types/api.ts
+──────────────────────────────────────────────────────────────────────────────
+export interface ApiResponse<T> {
+  success: true
+  data: T
+}
+
+export interface ApiError {
+  success: false
+  error: {
+    code: string
+    message: string
+    details?: { field: string; message: string }[]
+  }
+}
+
+──────────────────────────────────────────────────────────────────────────────
+  ARCHIVO: src/types/AuthContext.ts
+──────────────────────────────────────────────────────────────────────────────
+import type { User } from "./entities"
+
+export interface AuthContextType {
+  user: User | null
+  token: string | null
+  isLoading: boolean
+  login: (token: string, user: User) => void
+  logout: () => void
+}
+
+──────────────────────────────────────────────────────────────────────────────
+  ARCHIVO: src/api/client.ts
+──────────────────────────────────────────────────────────────────────────────
+import axios from "axios";
+import { getToken, removeToken } from "../utils/storage";
+
+const cliente = axios.create({
+    baseURL: import.meta.env.VITE_API_URL ?? "http://localhost:3000/api",
+    headers:{
+        "Content-Type": "application/json"
+    }
+})
+
+cliente.interceptors.request.use((config) => {
+    const token = getToken();
+    if(token){
+        config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+});
+
+cliente.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      removeToken()
+      window.location.href = '/login'
+    }
+    return Promise.reject(error)
+  }
+)
+
+export default cliente
+
+──────────────────────────────────────────────────────────────────────────────
+  ARCHIVO: src/api/auth.api.ts
+──────────────────────────────────────────────────────────────────────────────
+import type { ApiResponse } from "../types/api";
+import type { LoginResponse } from "../types/entities";
+import cliente from "./client";
+
+export const loginApi = async (email: string, clave: string): Promise<LoginResponse> => {
+    const res = await cliente.post<ApiResponse<LoginResponse>>("/auth/login", { email, clave });
+    return res.data.data;
+}
+
+export const logoutApi = async (): Promise<void> => {
+    await cliente.post("/auth/logout");
+}
+
+──────────────────────────────────────────────────────────────────────────────
+  ARCHIVO: src/context/AuthContext.tsx
+──────────────────────────────────────────────────────────────────────────────
+import { createContext, useState, useEffect } from 'react'
+import type { ReactNode } from 'react'
+import type { User } from '../types/entities'
+import { getToken, saveToken, removeToken } from '../utils/storage'
+import client from '../api/client'
+import type { AuthContextType } from '../types/AuthContext'
+
+export const AuthContext = createContext<AuthContextType | null>(null);
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [user, setUser] = useState<User | null>(null)
+  const [token, setToken] = useState<string | null>(getToken())
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    const storedToken = getToken()
+    if (!storedToken) {
+      setIsLoading(false)
+      return
+    }
+    client.get('/auth/me')
+      .then((res) => {
+        setUser(res.data.data.user)
+        setToken(storedToken)
+      })
+      .catch(() => {
+        removeToken()
+        setUser(null)
+        setToken(null)
+      })
+      .finally(() => setIsLoading(false))
+  }, [])
+
+  function login(newToken: string, newUser: User) {
+    saveToken(newToken)
+    setToken(newToken)
+    setUser(newUser)
+  }
+
+  function logout() {
+    removeToken()
+    setToken(null)
+    setUser(null)
+  }
+
+  return (
+    <AuthContext.Provider value={{ user, token, isLoading, login, logout }}>
+      {children}
+    </AuthContext.Provider>
+  )
+}
+
+──────────────────────────────────────────────────────────────────────────────
+  ARCHIVO: src/hooks/useAuth.ts
+──────────────────────────────────────────────────────────────────────────────
+import { useContext } from "react"
+import { AuthContext } from "../context/AuthContext"
+
+export function useAuth() {
+  const context = useContext(AuthContext)
+  if (!context) {
+    throw new Error('useAuth debe usarse dentro de AuthProvider')
+  }
+  return context
+}
+
+──────────────────────────────────────────────────────────────────────────────
+  ARCHIVO: src/routes/PrivateRoute.tsx
+──────────────────────────────────────────────────────────────────────────────
+import { Navigate, Outlet } from 'react-router-dom'
+import { useAuth } from '../hooks/useAuth'
+
+function PrivateRoute() {
+  const { token, isLoading } = useAuth()
+  if (isLoading) return <div>Cargando...</div>
+  return token ? <Outlet /> : <Navigate to="/login" replace />
+}
+
+export default PrivateRoute
+
+──────────────────────────────────────────────────────────────────────────────
+  ARCHIVO: src/routes/PublicRoute.tsx
+──────────────────────────────────────────────────────────────────────────────
+import { Navigate, Outlet } from 'react-router-dom'
+import { useAuth } from '../hooks/useAuth'
+
+function PublicRoute() {
+  const { token, isLoading } = useAuth()
+  if (isLoading) return <div>Cargando...</div>
+  return token ? <Navigate to="/" replace /> : <Outlet />
+}
+
+export default PublicRoute
+
+──────────────────────────────────────────────────────────────────────────────
+  ARCHIVO: src/App.tsx
+──────────────────────────────────────────────────────────────────────────────
+import { RouterProvider } from "react-router-dom"
+import router from "./routes/router"
+
+function App() {
+  return <RouterProvider router={router} />
+}
+
+export default App
+
+──────────────────────────────────────────────────────────────────────────────
+  ARCHIVO: src/main.tsx
+──────────────────────────────────────────────────────────────────────────────
+import { StrictMode } from 'react'
+import { createRoot } from 'react-dom/client'
+import App from './App.tsx'
+import { AuthProvider } from './context/AuthContext.tsx'
+import { Toaster } from 'react-hot-toast'
+
+createRoot(document.getElementById('root')!).render(
+  <StrictMode>
+    <AuthProvider>
+      <App />
+      <Toaster position="top-right" />
+    </AuthProvider>
+  </StrictMode>,
+)
+
+──────────────────────────────────────────────────────────────────────────────
+  ARCHIVO: src/pages/NotFoundPage.tsx
+──────────────────────────────────────────────────────────────────────────────
+import { Link } from 'react-router-dom'
+import '../styles/NotFoundPage.css'
+
+export const NotFoundPage = () => {
+  return (
+    <section className="not-found-page">
+      <div className="not-found-page__panel">
+        <p className="not-found-page__pill">Error 404</p>
+        <h1 className="not-found-page__title">Página no encontrada</h1>
+        <p className="not-found-page__subtitle">La ruta que intentaste abrir no existe.</p>
+        <div className="not-found-page__actions">
+          <Link to="/" className="not-found-page__btn not-found-page__btn--primary">Volver al inicio</Link>
+          <Link to="/login" className="not-found-page__btn not-found-page__btn--neutral">Ir a login</Link>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+──────────────────────────────────────────────────────────────────────────────
+  ARCHIVO: src/styles/NotFoundPage.css
+──────────────────────────────────────────────────────────────────────────────
+.not-found-page { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: #f5f6fa; }
+.not-found-page__panel { background: #fff; border-radius: 12px; padding: 2.5rem; text-align: center; max-width: 480px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+.not-found-page__pill { display: inline-block; background: #fee2e2; color: #dc2626; padding: 0.3rem 0.8rem; border-radius: 999px; font-size: 0.8rem; font-weight: 700; margin-bottom: 1rem; }
+.not-found-page__title { font-size: 1.8rem; font-weight: 800; color: #1f2937; margin-bottom: 0.75rem; }
+.not-found-page__subtitle { color: #6b7280; margin-bottom: 2rem; }
+.not-found-page__actions { display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap; }
+.not-found-page__btn { padding: 0.65rem 1.25rem; border-radius: 8px; font-weight: 600; text-decoration: none; font-size: 0.9rem; }
+.not-found-page__btn--primary { background: #3b4ac7; color: #fff; }
+.not-found-page__btn--neutral { background: #eef2ff; color: #2b3476; }
+
+──────────────────────────────────────────────────────────────────────────────
+  ARCHIVO: src/styles/LoginPage.css
+──────────────────────────────────────────────────────────────────────────────
+.login-wrapper { min-height: 100vh; display: flex; align-items: center; justify-content: center; background-color: #f0f2f5; }
+.login-card { background: white; padding: 2.5rem; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); width: 100%; max-width: 420px; }
+.login-card h1 { text-align: center; margin-bottom: 0.5rem; color: #1a1a2e; font-size: 1.8rem; }
+.login-card p { text-align: center; color: #666; margin-bottom: 2rem; font-size: 0.95rem; }
+.form-group { margin-bottom: 1.2rem; }
+.form-group label { display: block; margin-bottom: 0.4rem; font-weight: 600; color: #333; font-size: 0.9rem; }
+.form-group input { width: 100%; padding: 0.75rem 1rem; border: 1.5px solid #ddd; border-radius: 8px; font-size: 1rem; transition: border-color 0.2s; box-sizing: border-box; }
+.form-group input:focus { outline: none; border-color: #4f46e5; }
+.error-message { background: #fee2e2; color: #dc2626; padding: 0.75rem 1rem; border-radius: 8px; margin-bottom: 1rem; font-size: 0.9rem; }
+.btn-login { width: 100%; padding: 0.85rem; background-color: #4f46e5; color: white; border: none; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer; }
+.btn-login:hover { background-color: #4338ca; }
+.btn-login:disabled { background-color: #a5b4fc; cursor: not-allowed; }
+
+──────────────────────────────────────────────────────────────────────────────
+  ARCHIVO: src/styles/AppLayout.css
+──────────────────────────────────────────────────────────────────────────────
+:root {
+  --navbar-bg: #ffffff; --navbar-border: #e5e7eb;
+  --sidebar-bg: #1e2235; --sidebar-hover: #2a3150;
+  --sidebar-active: #3b4ac7; --sidebar-text: #9ba3c2;
+  --sidebar-text-active: #ffffff; --sidebar-width: 230px;
+  --content-bg: #f5f6fa; --accent: #3b4ac7;
+  --danger: #ef4444; --danger-hover: #dc2626;
+  --text-dark: #1f2937; --text-muted: #6b7280;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Segoe UI', system-ui, sans-serif; background-color: var(--content-bg); color: var(--text-dark); }
+.layout { display: flex; flex-direction: column; min-height: 100vh; }
+.navbar { display: flex; align-items: center; justify-content: space-between; padding: 0 1.5rem; height: 64px; background-color: var(--navbar-bg); border-bottom: 1px solid var(--navbar-border); position: sticky; top: 0; z-index: 100; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+.navbar-left { display: flex; align-items: center; gap: 1rem; }
+.btn-toggle { background: none; border: none; font-size: 1.3rem; cursor: pointer; color: var(--text-muted); padding: 0.3rem 0.5rem; border-radius: 6px; }
+.btn-toggle:hover { background: #f3f4f6; color: var(--text-dark); }
+.navbar-brand { font-size: 1.15rem; font-weight: 700; color: var(--accent); }
+.navbar-user { display: flex; align-items: center; gap: 1.25rem; }
+.user-info { display: flex; flex-direction: column; align-items: flex-end; line-height: 1.3; }
+.user-name { font-weight: 600; font-size: 0.9rem; color: var(--text-dark); }
+.user-email { font-size: 0.75rem; color: var(--text-muted); }
+.btn-logout { background: var(--danger); color: white; border: none; padding: 0.45rem 1.1rem; border-radius: 8px; cursor: pointer; font-size: 0.85rem; font-weight: 600; }
+.btn-logout:hover { background: var(--danger-hover); }
+.layout-body { display: flex; flex: 1; overflow: hidden; }
+.sidebar { background-color: var(--sidebar-bg); width: var(--sidebar-width); overflow: hidden; transition: width 0.3s ease; padding-top: 1rem; flex-shrink: 0; }
+.sidebar-closed { width: 0; }
+.sidebar nav { display: flex; flex-direction: column; gap: 0.25rem; padding: 0 0.75rem; }
+.nav-item { display: flex; align-items: center; gap: 0.75rem; padding: 0.65rem 0.85rem; border-radius: 8px; text-decoration: none; color: var(--sidebar-text); font-size: 0.9rem; white-space: nowrap; }
+.nav-item:hover { background-color: var(--sidebar-hover); color: white; }
+.nav-item.active { background-color: var(--sidebar-active); color: var(--sidebar-text-active); font-weight: 600; }
+.nav-icon { font-size: 1.1rem; width: 1.25rem; text-align: center; }
+.content { flex: 1; padding: 2rem; overflow-y: auto; height: calc(100vh - 64px); }
+
+════════════════════════════════════════════════════════════════════════════════
+PASO 5 — ARCHIVOS QUE CAMBIAN POCO (adapta los nombres)
+════════════════════════════════════════════════════════════════════════════════
+
+══════════════════════════════════════════════════════
+CASO 3 (el que ya tienes): Pacientes / Especialidades / Citas
+  EntityA = Paciente  | ruta = /pacientes
+  EntityB = Especialidad | ruta = /especialidades
+  EntityC = Cita | ruta = /citas
+
+CASO 1: Estudiantes / Materias / Matrículas
+  EntityA = Estudiante  | ruta = /estudiantes
+  EntityB = Materia     | ruta = /materias
+  EntityC = Matricula   | ruta = /matriculas
+
+CASO 2: Clientes / Vehiculos / Reservas
+  EntityA = Cliente     | ruta = /clientes
+  EntityB = Vehiculo    | ruta = /vehiculos
+  EntityC = Reserva     | ruta = /reservas
+
+CASO 4: Tecnicos / Clientes / Tickets
+  EntityA = Tecnico     | ruta = /tecnicos
+  EntityB = Cliente     | ruta = /clientes
+  EntityC = Ticket      | ruta = /tickets
+
+CASO 5: Conferencistas / Auditorios / Reservas
+  EntityA = Conferencista | ruta = /conferencistas
+  EntityB = Auditorio     | ruta = /auditorios
+  EntityC = Reserva       | ruta = /reservas
+══════════════════════════════════════════════════════
+
+──────────────────────────────────────────────────────────────────────────────
+  ARCHIVO: src/types/entities.ts
+  (adapta campos y nombres de entidades)
+──────────────────────────────────────────────────────────────────────────────
+export interface User {
+  id: number
+  nombre: string
+  apellido: string
+  email: string
+}
+
+export interface LoginResponse {
+  token: string
+  user: User
+}
+
+// ▼▼▼ CAMBIA ABAJO por las entidades de tu caso ▼▼▼
+
+export interface Paciente {            // ← cambia nombre
+  id: number
+  nombre: string                      // ← cambia campos según backend
+  apellido: string
+  cedula: string
+  telefono: string
+  email: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface Especialidad {       // ← cambia nombre
+  id: number
+  nombre: string
+  descripcion: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface Cita {               // ← cambia nombre (entidad relacional)
+  id: number
+  pacienteId: number                  // ← cambia a los ids de tus entidades
+  especialidadId: number
+  fecha: string
+  motivo: string | null
+  paciente: Paciente                  // ← el backend incluye el objeto completo (eager loading)
+  especialidad: Especialidad
+  createdAt: string
+  updatedAt: string
+}
+
+──────────────────────────────────────────────────────────────────────────────
+  ARCHIVO: src/routes/router.tsx
+  (adapta rutas y nombres de páginas)
+──────────────────────────────────────────────────────────────────────────────
+import { createBrowserRouter } from 'react-router-dom'
+import PrivateRoute from './PrivateRoute'
+import PublicRoute from './PublicRoute'
+import { AppLayout } from '../pages/AppLayout'
+import { LoginPage } from '../pages/LoginPage'
+import { DashboardPage } from '../pages/DashboardPage'
+import { NotFoundPage } from '../pages/NotFoundPage'
+// ▼▼▼ CAMBIA estos imports por tus páginas ▼▼▼
+import { PacientesPage } from '../pages/PacientesPage'
+import { EspecialidadesPage } from '../pages/EspecialidadesPage'
+import { CitasPage } from '../pages/CitasPage'
+
+const router = createBrowserRouter([
+  {
+    element: <PublicRoute />,
+    children: [
+      { path: '/login', element: <LoginPage /> },
+    ],
+  },
+  {
+    element: <PrivateRoute />,
+    children: [{
+      element: <AppLayout />,
+      children: [
+        { path: '/', element: <DashboardPage /> },
+        // ▼▼▼ CAMBIA estas rutas por las tuyas ▼▼▼
+        { path: '/pacientes', element: <PacientesPage /> },
+        { path: '/especialidades', element: <EspecialidadesPage /> },
+        { path: '/citas', element: <CitasPage /> },
+      ],
+    }],
+  },
+  { path: '*', element: <NotFoundPage /> },
+])
+
+export default router
+
+──────────────────────────────────────────────────────────────────────────────
+  ARCHIVO: src/pages/LoginPage.tsx   (NO CAMBIA)
+──────────────────────────────────────────────────────────────────────────────
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { useAuth } from '../hooks/useAuth'
+import { loginApi } from '../api/auth.api'
+import '../styles/LoginPage.css'
+
+export function LoginPage() {
+  const [email, setEmail] = useState('')
+  const [clave, setClave] = useState('')
+  const [error, setError] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
+  const { login } = useAuth()
+  const navigate = useNavigate()
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setError('')
+    setIsLoading(true)
+    try {
+      const data = await loginApi(email, clave)
+      login(data.token, data.user)
+      navigate('/')
+    } catch (err: unknown) {
+      if (err && typeof err === 'object' && 'response' in err && err.response && typeof err.response === 'object' && 'data' in err.response) {
+        const responseData = err.response.data as { error?: { message?: string } }
+        setError(responseData?.error?.message ?? 'Usuario o contraseña incorrectos.')
+      } else {
+        setError('Usuario o contraseña incorrectos.')
+      }
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  return (
+    <div className="login-wrapper">
+      <div className="login-card">
+        <h1>Bienvenido</h1>
+        <p>Ingresa tus credenciales para continuar</p>
+        {error && <div className="error-message">{error}</div>}
+        <form onSubmit={handleSubmit}>
+          <div className="form-group">
+            <label htmlFor="email">Correo electrónico</label>
+            <input id="email" type="email" placeholder="demo@demo.com" value={email} onChange={(e) => setEmail(e.target.value)} required />
+          </div>
+          <div className="form-group">
+            <label htmlFor="clave">Contraseña</label>
+            <input id="clave" type="password" placeholder="••••••••" value={clave} onChange={(e) => setClave(e.target.value)} required />
+          </div>
+          <button type="submit" className="btn-login" disabled={isLoading}>
+            {isLoading ? 'Ingresando...' : 'Ingresar'}
+          </button>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+──────────────────────────────────────────────────────────────────────────────
+  ARCHIVO: src/pages/AppLayout.tsx
+  (cambia: nombre del sistema, rutas del sidebar, emoji e ícono)
+──────────────────────────────────────────────────────────────────────────────
+import { useState } from 'react'
+import { NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { useAuth } from '../hooks/useAuth'
+import { logoutApi } from '../api/auth.api'
+import '../styles/AppLayout.css'
+
+export function AppLayout() {
+  const { user, logout } = useAuth()
+  const navigate = useNavigate()
+  const [sidebarOpen, setSidebarOpen] = useState(true)
+
+  async function handleLogout() {
+    try { await logoutApi() } finally {
+      logout()
+      navigate('/login')
+    }
+  }
+
+  return (
+    <div className="layout">
+      <header className="navbar">
+        <div className="navbar-left">
+          <button className="btn-toggle" onClick={() => setSidebarOpen(prev => !prev)}>
+            {sidebarOpen ? '✕' : '☰'}
+          </button>
+          {/* ▼ CAMBIA el nombre del sistema */}
+          <span className="navbar-brand">🏥 Sistema Médico</span>
+        </div>
+        <div className="navbar-user">
+          <div className="user-info">
+            <span className="user-name">{user?.nombre} {user?.apellido}</span>
+            <span className="user-email">{user?.email}</span>
+          </div>
+          <button onClick={handleLogout} className="btn-logout">Cerrar sesión</button>
+        </div>
+      </header>
+
+      <div className="layout-body">
+        <aside className={`sidebar ${sidebarOpen ? 'sidebar-open' : 'sidebar-closed'}`}>
+          <nav>
+            <NavLink to="/" end className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}>
+              <span className="nav-icon">🏠</span>
+              <span className="nav-label">Inicio</span>
+            </NavLink>
+            {/* ▼▼▼ CAMBIA rutas, íconos y nombres de menú ▼▼▼ */}
+            <NavLink to="/pacientes" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}>
+              <span className="nav-icon">👤</span>
+              <span className="nav-label">Pacientes</span>
+            </NavLink>
+            <NavLink to="/especialidades" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}>
+              <span className="nav-icon">🩺</span>
+              <span className="nav-label">Especialidades</span>
+            </NavLink>
+            <NavLink to="/citas" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}>
+              <span className="nav-icon">📅</span>
+              <span className="nav-label">Citas</span>
+            </NavLink>
+          </nav>
+        </aside>
+        <main className="content">
+          <Outlet />
+        </main>
+      </div>
+    </div>
+  )
+}
+
+════════════════════════════════════════════════════════════════════════════════
+PASO 6 — PLANTILLA API FILE (una por entidad)
+  Crea src/api/pacientes.api.ts y repite para las otras entidades.
+  Solo cambia: nombre de interfaz, campos, y la ruta (/pacientes).
+════════════════════════════════════════════════════════════════════════════════
+
+──────────────────────────────────────────────────────────────────────────────
+  PLANTILLA: src/api/pacientes.api.ts
+  (EntityA / EntityB — entidad simple con CRUD completo)
+──────────────────────────────────────────────────────────────────────────────
+import client from './client'
+import type { ApiResponse } from '../types/api'
+import type { Paciente } from '../types/entities'   // ← cambia el tipo
+
+export interface CreatePacienteDto {  // ← cambia nombre y campos
+  nombre: string
+  apellido: string
+  cedula: string
+  telefono: string
+  email?: string
+}
+
+export type UpdatePacienteDto = Partial<CreatePacienteDto>
+
+export async function getPacientes(): Promise<Paciente[]> {
+  const res = await client.get<ApiResponse<Paciente[]>>('/pacientes')  // ← cambia ruta
+  return res.data.data
+}
+
+export async function createPaciente(data: CreatePacienteDto): Promise<Paciente> {
+  const res = await client.post<ApiResponse<Paciente>>('/pacientes', data)
+  return res.data.data
+}
+
+export async function updatePaciente(id: number, data: UpdatePacienteDto): Promise<Paciente> {
+  const res = await client.put<ApiResponse<Paciente>>(`/pacientes/${id}`, data)
+  return res.data.data
+}
+
+export async function deletePaciente(id: number): Promise<void> {
+  await client.delete(`/pacientes/${id}`)
+}
+
+──────────────────────────────────────────────────────────────────────────────
+  PLANTILLA: src/api/citas.api.ts
+  (EntityC — solo crear y eliminar, tiene IDs de A y B)
+──────────────────────────────────────────────────────────────────────────────
+import client from './client'
+import type { ApiResponse } from '../types/api'
+import type { Cita } from '../types/entities'   // ← cambia tipo
+
+export interface CreateCitaDto {   // ← cambia campos (los IDs van como number)
+  pacienteId: number
+  especialidadId: number
+  fecha: string
+  motivo?: string
+}
+
+export async function getCitas(): Promise<Cita[]> {
+  const res = await client.get<ApiResponse<Cita[]>>('/citas')   // ← cambia ruta
+  return res.data.data
+}
+
+export async function createCita(data: CreateCitaDto): Promise<Cita> {
+  const res = await client.post<ApiResponse<Cita>>('/citas', data)
+  return res.data.data
+}
+
+export async function deleteCita(id: number): Promise<void> {
+  await client.delete(`/citas/${id}`)
+}
+
+════════════════════════════════════════════════════════════════════════════════
+PASO 7 — PLANTILLA PAGE (entidad simple con EDITAR)
+  Usa esto para EntityA y EntityB.
+  El ejemplo usa "Especialidad". Cámbiala por la tuya.
+════════════════════════════════════════════════════════════════════════════════
+
+──────────────────────────────────────────────────────────────────────────────
+  PLANTILLA: src/pages/EspecialidadesPage.tsx
+  Cambia: "Especialidad"/"especialidad"/"especialidades" → tu entidad
+          Los campos del form y la tabla
+──────────────────────────────────────────────────────────────────────────────
+import { useState, useEffect } from 'react'
+import toast from 'react-hot-toast'
+import type { Especialidad } from '../types/entities'
+import type { CreateEspecialidadDto } from '../api/especialidades.api'
+import { getEspecialidades, createEspecialidad, updateEspecialidad, deleteEspecialidad } from '../api/especialidades.api'
+import '../styles/EspecialidadesPage.css'
+
+const EMPTY_FORM: CreateEspecialidadDto = {
+  nombre: '',        // ← pon todos los campos vacíos aquí
+  descripcion: '',
+}
+
+export function EspecialidadesPage() {
+  const [especialidades, setEspecialidades] = useState<Especialidad[]>([])
+  const [formData, setFormData] = useState<CreateEspecialidadDto>(EMPTY_FORM)
+  const [editingId, setEditingId] = useState<number | null>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  useEffect(() => { loadEspecialidades() }, [])
+
+  async function loadEspecialidades() {
+    const data = await getEspecialidades()
+    setEspecialidades(data)
+  }
+
+  function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) {
+    const { name, value } = e.target
+    setFormData(prev => ({ ...prev, [name]: value }))
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setIsSubmitting(true)
+    try {
+      if (editingId !== null) {
+        await updateEspecialidad(editingId, formData)
+      } else {
+        await createEspecialidad(formData)
+      }
+      handleCancel()
+      await loadEspecialidades()
+      toast.success(editingId !== null ? 'Actualizado correctamente' : 'Creado correctamente')
+    } catch (error) {
+      console.error(error)
+      toast.error('Ocurrió un error al guardar.')
+    } finally {
+      setIsSubmitting(false) }
+  }
+
+  function handleEdit(item: Especialidad) {
+    setFormData({
+      nombre: item.nombre,           // ← mapea campos de la entidad al form
+      descripcion: item.descripcion ?? '',
+    })
+    setEditingId(item.id)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  function handleCancel() {
+    setFormData(EMPTY_FORM)
+    setEditingId(null)
+  }
+
+  async function handleDelete(id: number) {
+    if (!confirm('¿Estás seguro de eliminar?')) return
+    try {
+      await deleteEspecialidad(id)
+      await loadEspecialidades()
+      toast.success('Eliminado correctamente')
+    } catch (error) {
+      console.error(error)
+      toast.error('No se pudo eliminar.')
+    }
+  }
+
+  return (
+    <section className="especialidades-page">
+      <header className="especialidades-page__header">
+        <div>
+          <h1 className="especialidades-page__title">Especialidades</h1>
+          <p className="especialidades-page__subtitle">Gestión de especialidades del sistema.</p>
+        </div>
+      </header>
+
+      {/* FORMULARIO */}
+      <section className="especialidades-page__panel">
+        <h2 className="especialidades-page__panel-title">
+          {editingId !== null ? '✏️ Editar especialidad' : '➕ Nueva especialidad'}
+        </h2>
+        <form className="especialidades-page__form" onSubmit={handleSubmit}>
+          <div className="especialidades-page__form-grid">
+
+            {/* ▼▼▼ CAMBIA ESTOS CAMPOS por los de tu entidad ▼▼▼ */}
+            <div className="especialidades-page__field">
+              <label htmlFor="nombre">Nombre *</label>
+              <input id="nombre" name="nombre" placeholder="Ej: Cardiología" value={formData.nombre} onChange={handleChange} required />
+            </div>
+
+            <div className="especialidades-page__field especialidades-page__field--full">
+              <label htmlFor="descripcion">Descripción</label>
+              <textarea id="descripcion" name="descripcion" rows={3} value={formData.descripcion ?? ''} onChange={handleChange} />
+            </div>
+
+          </div>
+          <div className="especialidades-page__actions">
+            <button className="especialidades-page__btn especialidades-page__btn--primary" type="submit" disabled={isSubmitting}>
+              {isSubmitting ? 'Guardando...' : editingId !== null ? 'Actualizar' : 'Guardar'}
+            </button>
+            {editingId !== null && (
+              <button className="especialidades-page__btn especialidades-page__btn--neutral" type="button" onClick={handleCancel}>
+                Cancelar
+              </button>
+            )}
+          </div>
+        </form>
+      </section>
+
+      {/* TABLA */}
+      <section className="especialidades-page__panel">
+        <h2 className="especialidades-page__panel-title">Listado ({especialidades.length})</h2>
+        {especialidades.length === 0 ? (
+          <p className="especialidades-page__empty">No hay registros.</p>
+        ) : (
+          <div className="especialidades-page__table-wrap">
+            <table className="especialidades-page__table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  {/* ▼▼▼ CAMBIA las columnas por las de tu entidad ▼▼▼ */}
+                  <th>Nombre</th>
+                  <th>Descripción</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {especialidades.map((item) => (
+                  <tr key={item.id}>
+                    <td>#{item.id}</td>
+                    {/* ▼▼▼ CAMBIA las celdas ▼▼▼ */}
+                    <td>{item.nombre}</td>
+                    <td>{item.descripcion ?? '—'}</td>
+                    <td>
+                      <div className="especialidades-page__actions especialidades-page__actions--compact">
+                        <button className="especialidades-page__btn especialidades-page__btn--neutral" type="button" onClick={() => handleEdit(item)}>Editar</button>
+                        <button className="especialidades-page__btn especialidades-page__btn--danger" type="button" onClick={() => handleDelete(item.id)}>Eliminar</button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+    </section>
+  )
+}
+
+──────────────────────────────────────────────────────────────────────────────
+  CSS genérico para cualquier página simple
+  Guárdalo como: src/styles/EspecialidadesPage.css
+  Para otra entidad: copia y reemplaza "especialidades-page" por "tu-entidad-page"
+──────────────────────────────────────────────────────────────────────────────
+.especialidades-page { display: grid; gap: 1.25rem; }
+.especialidades-page__title { font-size: 1.55rem; color: var(--text-dark, #1f2937); font-weight: 700; }
+.especialidades-page__subtitle { color: var(--text-muted, #6b7280); font-size: 0.9rem; margin-top: 0.25rem; }
+.especialidades-page__panel { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); padding: 1rem; }
+.especialidades-page__panel-title { font-size: 1.05rem; color: var(--text-dark, #1f2937); font-weight: 700; }
+.especialidades-page__form { margin-top: 0.75rem; }
+.especialidades-page__form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.85rem; }
+.especialidades-page__field { display: grid; gap: 0.35rem; }
+.especialidades-page__field--full { grid-column: 1 / -1; }
+.especialidades-page__field label { font-size: 0.86rem; color: #374151; font-weight: 600; }
+.especialidades-page__field input,
+.especialidades-page__field textarea,
+.especialidades-page__field select { width: 100%; border: 1px solid #d1d5db; border-radius: 8px; padding: 0.55rem 0.75rem; font: inherit; resize: vertical; }
+.especialidades-page__field input:focus,
+.especialidades-page__field textarea:focus,
+.especialidades-page__field select:focus { outline: none; border-color: var(--accent, #3b4ac7); box-shadow: 0 0 0 3px rgba(59,74,199,0.15); }
+.especialidades-page__actions { display: flex; gap: 0.55rem; flex-wrap: wrap; margin-top: 0.85rem; }
+.especialidades-page__actions--compact { margin-top: 0; }
+.especialidades-page__btn { border: none; border-radius: 8px; cursor: pointer; padding: 0.55rem 0.85rem; font-size: 0.85rem; font-weight: 600; }
+.especialidades-page__btn--primary { background: var(--accent, #3b4ac7); color: #fff; }
+.especialidades-page__btn--neutral { background: #eef2ff; color: #2b3476; }
+.especialidades-page__btn--danger { background: #fee2e2; color: #b91c1c; }
+.especialidades-page__table-wrap { overflow-x: auto; margin-top: 0.75rem; }
+.especialidades-page__table { width: 100%; border-collapse: collapse; min-width: 500px; }
+.especialidades-page__table th,
+.especialidades-page__table td { text-align: left; padding: 0.72rem; border-bottom: 1px solid #e5e7eb; font-size: 0.9rem; }
+.especialidades-page__table th { color: #475569; font-weight: 700; background: #f8fafc; }
+.especialidades-page__empty { color: #6b7280; font-size: 0.9rem; margin-top: 0.75rem; }
+
+════════════════════════════════════════════════════════════════════════════════
+PASO 8 — PLANTILLA PAGE (entidad relacional — solo crear/eliminar + selects)
+  Usa esto para EntityC (la que relaciona A y B).
+  Ejemplo: CitasPage (tiene selects de Paciente y Especialidad)
+════════════════════════════════════════════════════════════════════════════════
+
+──────────────────────────────────────────────────────────────────────────────
+  PLANTILLA: src/pages/CitasPage.tsx
+  Cambia: entidades A y B que se muestran en selects
+          Campos del form y columnas de la tabla
+──────────────────────────────────────────────────────────────────────────────
+import { useState, useEffect } from 'react'
+import toast from 'react-hot-toast'
+import type { Cita, Paciente, Especialidad } from '../types/entities'
+import type { CreateCitaDto } from '../api/citas.api'
+import { getCitas, createCita, deleteCita } from '../api/citas.api'
+import { getPacientes } from '../api/pacientes.api'
+import { getEspecialidades } from '../api/especialidades.api'
+import '../styles/CitasPage.css'
+
+const EMPTY_FORM: CreateCitaDto = {
+  pacienteId: 0,        // ← IDs van en 0 como valor vacío
+  especialidadId: 0,
+  fecha: '',
+  motivo: '',
+}
+
+export function CitasPage() {
+  const [citas, setCitas] = useState<Cita[]>([])
+  const [pacientes, setPacientes] = useState<Paciente[]>([])
+  const [especialidades, setEspecialidades] = useState<Especialidad[]>([])
+  const [formData, setFormData] = useState<CreateCitaDto>(EMPTY_FORM)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  useEffect(() => {
+    async function loadAll() {
+      const [c, p, e] = await Promise.all([
+        getCitas(),
+        getPacientes(),
+        getEspecialidades(),
+      ])
+      setCitas(c)
+      setPacientes(p)
+      setEspecialidades(e)
+    }
+    loadAll()
+  }, [])
+
+  async function loadCitas() {
+    const data = await getCitas()
+    setCitas(data)
+  }
+
+  function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) {
+    const { name, value } = e.target
+    setFormData(prev => ({
+      ...prev,
+      // Los campos que son ID numérico se convierten a number
+      [name]: name === 'pacienteId' || name === 'especialidadId' ? Number(value) : value,
+    }))
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (formData.pacienteId === 0 || formData.especialidadId === 0) {
+      toast.error('Selecciona todas las opciones requeridas.')
+      return
+    }
+    setIsSubmitting(true)
+    try {
+      await createCita(formData)
+      setFormData(EMPTY_FORM)
+      await loadCitas()
+      toast.success('Creado correctamente')
+    } catch (error) {
+      console.error(error)
+      toast.error('Ocurrió un error al guardar.')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  async function handleDelete(id: number) {
+    if (!confirm('¿Estás seguro de eliminar?')) return
+    try {
+      await deleteCita(id)
+      await loadCitas()
+      toast.success('Eliminado correctamente')
+    } catch (error) {
+      console.error(error)
+      toast.error('No se pudo eliminar.')
+    }
+  }
+
+  return (
+    <section className="citas-page">
+      <header className="citas-page__header">
+        <div>
+          <h1 className="citas-page__title">Citas</h1>
+          <p className="citas-page__subtitle">Agenda de citas médicas del sistema.</p>
+        </div>
+      </header>
+
+      {/* FORMULARIO */}
+      <section className="citas-page__panel">
+        <h2 className="citas-page__panel-title">➕ Nueva cita</h2>
+        <form className="citas-page__form" onSubmit={handleSubmit}>
+          <div className="citas-page__form-grid">
+
+            {/* ▼ SELECT de EntityA */}
+            <div className="citas-page__field">
+              <label htmlFor="pacienteId">Paciente *</label>
+              <select id="pacienteId" name="pacienteId" value={formData.pacienteId} onChange={handleChange} required>
+                <option value={0} disabled>Seleccionar paciente</option>
+                {pacientes.map(p => (
+                  <option key={p.id} value={p.id}>{p.nombre} {p.apellido}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* ▼ SELECT de EntityB */}
+            <div className="citas-page__field">
+              <label htmlFor="especialidadId">Especialidad *</label>
+              <select id="especialidadId" name="especialidadId" value={formData.especialidadId} onChange={handleChange} required>
+                <option value={0} disabled>Seleccionar especialidad</option>
+                {especialidades.map(e => (
+                  <option key={e.id} value={e.id}>{e.nombre}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* ▼▼▼ CAMBIA estos campos por los de tu entidad relacional ▼▼▼ */}
+            <div className="citas-page__field">
+              <label htmlFor="fecha">Fecha y hora *</label>
+              <input id="fecha" name="fecha" type="datetime-local" value={formData.fecha} onChange={handleChange} required />
+            </div>
+
+            <div className="citas-page__field citas-page__field--full">
+              <label htmlFor="motivo">Motivo</label>
+              <textarea id="motivo" name="motivo" rows={3} value={formData.motivo ?? ''} onChange={handleChange} />
+            </div>
+
+          </div>
+          <div className="citas-page__actions">
+            <button className="citas-page__btn citas-page__btn--primary" type="submit" disabled={isSubmitting}>
+              {isSubmitting ? 'Guardando...' : 'Guardar'}
+            </button>
+          </div>
+        </form>
+      </section>
+
+      {/* TABLA */}
+      <section className="citas-page__panel">
+        <h2 className="citas-page__panel-title">Listado ({citas.length})</h2>
+        {citas.length === 0 ? (
+          <p className="citas-page__empty">No hay registros.</p>
+        ) : (
+          <div className="citas-page__table-wrap">
+            <table className="citas-page__table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  {/* ▼▼▼ CAMBIA las columnas ▼▼▼ */}
+                  <th>Paciente</th>
+                  <th>Especialidad</th>
+                  <th>Fecha</th>
+                  <th>Motivo</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {citas.map((c) => (
+                  <tr key={c.id}>
+                    <td>#{c.id}</td>
+                    {/* ▼▼▼ CAMBIA las celdas — c.paciente.nombre viene del eager loading ▼▼▼ */}
+                    <td>{c.paciente.nombre} {c.paciente.apellido}</td>
+                    <td>{c.especialidad.nombre}</td>
+                    <td>{new Date(c.fecha).toLocaleString()}</td>
+                    <td>{c.motivo ?? '—'}</td>
+                    <td>
+                      <button className="citas-page__btn citas-page__btn--danger" type="button" onClick={() => handleDelete(c.id)}>Eliminar</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+    </section>
+  )
+}
+
+──────────────────────────────────────────────────────────────────────────────
+  CSS para la página relacional (CitasPage)
+  Guárdalo como: src/styles/CitasPage.css
+  Para otra entidad: copia y reemplaza "citas-page" por "tu-entidad-page"
+──────────────────────────────────────────────────────────────────────────────
+.citas-page { display: grid; gap: 1.25rem; }
+.citas-page__title { font-size: 1.55rem; color: var(--text-dark, #1f2937); font-weight: 700; }
+.citas-page__subtitle { color: var(--text-muted, #6b7280); font-size: 0.9rem; margin-top: 0.25rem; }
+.citas-page__panel { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); padding: 1rem; }
+.citas-page__panel-title { font-size: 1.05rem; color: var(--text-dark, #1f2937); font-weight: 700; }
+.citas-page__form { margin-top: 0.75rem; }
+.citas-page__form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.85rem; }
+.citas-page__field { display: grid; gap: 0.35rem; }
+.citas-page__field--full { grid-column: 1 / -1; }
+.citas-page__field label { font-size: 0.86rem; color: #374151; font-weight: 600; }
+.citas-page__field input,
+.citas-page__field textarea,
+.citas-page__field select { width: 100%; border: 1px solid #d1d5db; border-radius: 8px; padding: 0.55rem 0.75rem; font: inherit; resize: vertical; }
+.citas-page__field input:focus,
+.citas-page__field textarea:focus,
+.citas-page__field select:focus { outline: none; border-color: var(--accent, #3b4ac7); box-shadow: 0 0 0 3px rgba(59,74,199,0.15); }
+.citas-page__actions { display: flex; gap: 0.55rem; flex-wrap: wrap; margin-top: 0.85rem; }
+.citas-page__btn { border: none; border-radius: 8px; cursor: pointer; padding: 0.55rem 0.85rem; font-size: 0.85rem; font-weight: 600; }
+.citas-page__btn--primary { background: var(--accent, #3b4ac7); color: #fff; }
+.citas-page__btn--neutral { background: #eef2ff; color: #2b3476; }
+.citas-page__btn--danger { background: #fee2e2; color: #b91c1c; }
+.citas-page__table-wrap { overflow-x: auto; margin-top: 0.75rem; }
+.citas-page__table { width: 100%; border-collapse: collapse; min-width: 500px; }
+.citas-page__table th,
+.citas-page__table td { text-align: left; padding: 0.72rem; border-bottom: 1px solid #e5e7eb; font-size: 0.9rem; }
+.citas-page__table th { color: #475569; font-weight: 700; background: #f8fafc; }
+.citas-page__empty { color: #6b7280; font-size: 0.9rem; margin-top: 0.75rem; }
+
+════════════════════════════════════════════════════════════════════════════════
+PASO 9 — DASHBOARD (adapta las entidades y las funciones de carga)
+════════════════════════════════════════════════════════════════════════════════
+
+──────────────────────────────────────────────────────────────────────────────
+  ARCHIVO: src/pages/DashboardPage.tsx
+──────────────────────────────────────────────────────────────────────────────
+import { useEffect, useState } from 'react'
+import { useAuth } from '../hooks/useAuth'
+// ▼▼▼ CAMBIA estos imports por tus entidades ▼▼▼
+import { getPacientes } from '../api/pacientes.api'
+import { getEspecialidades } from '../api/especialidades.api'
+import { getCitas } from '../api/citas.api'
+import '../styles/DashboardPage.css'
+
+export function DashboardPage() {
+  const { user } = useAuth()
+  // ▼ Cambia los nombres de los contadores
+  const [counts, setCounts] = useState({ pacientes: 0, especialidades: 0, citas: 0 })
+
+  useEffect(() => {
+    async function loadCounts() {
+      const [a, b, c] = await Promise.all([
+        getPacientes(), getEspecialidades(), getCitas(),
+      ])
+      setCounts({ pacientes: a.length, especialidades: b.length, citas: c.length })
+    }
+    loadCounts()
+  }, [])
+
+  return (
+    <section className="dashboard-page">
+      <header className="dashboard-page__header">
+        <div>
+          <h1 className="dashboard-page__title">Dashboard</h1>
+          <p className="dashboard-page__subtitle">
+            Bienvenido, <strong>{user?.nombre} {user?.apellido}</strong>
+          </p>
+        </div>
+      </header>
+      <div className="dashboard-page__stats-grid">
+        {/* ▼▼▼ Cambia labels y valores ▼▼▼ */}
+        <article className="dashboard-page__stat-card">
+          <p className="dashboard-page__stat-label">Pacientes</p>
+          <p className="dashboard-page__stat-value">{counts.pacientes}</p>
+        </article>
+        <article className="dashboard-page__stat-card">
+          <p className="dashboard-page__stat-label">Especialidades</p>
+          <p className="dashboard-page__stat-value">{counts.especialidades}</p>
+        </article>
+        <article className="dashboard-page__stat-card">
+          <p className="dashboard-page__stat-label">Citas</p>
+          <p className="dashboard-page__stat-value">{counts.citas}</p>
+        </article>
+      </div>
+    </section>
+  )
+}
+
+──────────────────────────────────────────────────────────────────────────────
+  ARCHIVO: src/styles/DashboardPage.css
+──────────────────────────────────────────────────────────────────────────────
+.dashboard-page { display: grid; gap: 1.5rem; }
+.dashboard-page__title { font-size: 1.55rem; font-weight: 700; color: var(--text-dark, #1f2937); }
+.dashboard-page__subtitle { color: var(--text-muted, #6b7280); margin-top: 0.25rem; }
+.dashboard-page__stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1rem; }
+.dashboard-page__stat-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 1.5rem; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+.dashboard-page__stat-label { font-size: 0.85rem; color: var(--text-muted, #6b7280); font-weight: 600; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em; }
+.dashboard-page__stat-value { font-size: 2.5rem; font-weight: 800; color: var(--accent, #3b4ac7); }
+
+════════════════════════════════════════════════════════════════════════════════
+CHECKLIST FINAL ANTES DE ENTREGAR
+════════════════════════════════════════════════════════════════════════════════
+
+  [ ] npm run dev corre sin errores en la consola
+  [ ] http://localhost:5173 muestra el login
+  [ ] Login con demo@demo.com / Demo1234! funciona
+  [ ] El sidebar muestra las 3 entidades
+  [ ] EntityA: puedo crear, editar y eliminar
+  [ ] EntityB: puedo crear, editar y eliminar
+  [ ] EntityC: puedo crear (con selects) y eliminar
+  [ ] Dashboard muestra los 3 contadores
+  [ ] Los toast de éxito/error aparecen
+  [ ] Si abro /dashboard sin login, me redirige al login
+  [ ] Si abro /login con sesión activa, me redirige al dashboard
+
+════════════════════════════════════════════════════════════════════════════════
+ORDEN RECOMENDADO PARA EL EXAMEN
+════════════════════════════════════════════════════════════════════════════════
+
+  1.  Crea el proyecto + instala dependencias (Paso 1)
+  2.  Crea las carpetas (Paso 2)
+  3.  Crea .env (Paso 3)
+  4.  Arranca el backend: cd backend && npm run dev
+  5.  Copia todos los archivos "que nunca cambian" (Paso 4)
+  6.  Crea types/entities.ts con las entidades reales
+  7.  Crea los 3 archivos api (Paso 6)
+  8.  Crea router.tsx (Paso 5)
+  9.  Crea AppLayout.tsx (Paso 5)
+  10. Crea LoginPage.tsx (Paso 5)
+  11. Crea DashboardPage.tsx + CSS (Paso 9)
+  12. Crea EntityAPage.tsx + CSS (Paso 7)
+  13. Crea EntityBPage.tsx + CSS (Paso 7)
+  14. Crea EntityCPage.tsx + CSS (Paso 8)
+  15. npm run dev y prueba todo
+
+  TIEMPO ESTIMADO: ~45-60 minutos si copias y adaptas
+
+════════════════════════════════════════════════════════════════════════════════
+ERRORES COMUNES Y SOLUCIONES RÁPIDAS
+════════════════════════════════════════════════════════════════════════════════
+
+  ERROR: Cannot find module 'react-router-dom'
+  → Solución: npm install (te faltó instalarlo)
+
+  ERROR: 401 Unauthorized en todas las peticiones
+  → Solución: verifica que el backend esté corriendo en puerto 3000
+
+  ERROR: CORS error en el navegador
+  → Solución: agrega cors al backend: app.use(cors({ origin: '*' }))
+
+  ERROR: Los selects de EntityC no cargan datos
+  → Solución: verifica que EntityA y EntityB tienen datos (revisa seed del backend)
+
+  ERROR: TypeScript dice "Property X does not exist on type Y"
+  → Solución: revisa types/entities.ts — los campos deben coincidir con el backend
+
+  ERROR: La pantalla parpadea al recargar y manda al login
+  → Normal con tokens vencidos — borra localStorage y vuelve a hacer login
+
+════════════════════════════════════════════════════════════════════════════════
+CREDENCIALES POR DEFECTO DEL BACKEND
+════════════════════════════════════════════════════════════════════════════════
+
+  Email:    demo@demo.com
+  Password: Demo1234!
+
+  Si el backend es de un compañero, pregúntale las credenciales del seed.

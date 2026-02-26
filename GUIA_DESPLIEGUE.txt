@@ -1,0 +1,84 @@
+════════════════════════════════════════════════════════════════
+  DEPLOYMENT — BACKEND en RENDER + FRONTEND en VERCEL
+════════════════════════════════════════════════════════════════
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  PASO 0 — SUBE EL CÓDIGO A GITHUB (antes de todo)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  git add .
+  git commit -m "deploy"
+  git push
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  PARTE 1 — BACKEND en RENDER (gratis, sin tarjeta)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  1. Ve a https://render.com y crea cuenta (usa GitHub)
+  2. Dashboard → New → Web Service
+  3. Conecta tu repositorio de GitHub
+  4. Rellena el formulario:
+
+     Name:             backend-citas         (cualquier nombre)
+     Language:         Node
+     Branch:           main
+     Root Directory:   backend prueba        (la carpeta del backend)
+     Build Command:    npm install && npx prisma generate && npm run build
+     Start Command:    npx prisma db push && npm run seed && node dist/server.js
+     Instance Type:    Free
+
+  5. En "Environment Variables" agrega estas 3:
+
+     DATABASE_URL    →  file:./dev.db
+     JWT_SECRET      →  clave_secreta_efc_2026
+     JWT_EXPIRES_IN  →  8h
+
+  6. Click "Create Web Service"
+  7. Espera ~3 minutos a que termine el build
+  8. Copia la URL que te da Render:
+     Ejemplo: https://backend-citas.onrender.com
+
+  ⚠ IMPORTANTE: El plan gratuito de Render apaga el servidor
+    después de 15 min sin uso. La primera petición tarda ~30 seg.
+    Abre la URL del backend ANTES de mostrar el frontend.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  PARTE 2 — FRONTEND en VERCEL (gratis, sin tarjeta)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  1. Ve a https://vercel.com y crea cuenta (usa GitHub)
+  2. Dashboard → Add New → Project
+  3. Importa tu repositorio de GitHub
+  4. Rellena el formulario:
+
+     Framework Preset:  Vite
+     Root Directory:    frontend              (la carpeta del frontend)
+     Build Command:     npm run build         (se llena solo)
+     Output Directory:  dist                  (se llena solo)
+
+  5. En "Environment Variables" agrega:
+
+     VITE_API_URL  →  https://backend-citas.onrender.com/api
+                       ↑ usa la URL que te dio Render + /api al final
+
+  6. Click "Deploy"
+  7. Espera ~1 minuto
+  8. Vercel te da la URL del frontend:
+     Ejemplo: https://mi-frontend.vercel.app
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  PARTE 3 — SI CAMBIAS CÓDIGO DESPUÉS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Solo haz:
+    git add .
+    git commit -m "fix"
+    git push
+
+  Render y Vercel se redesplegarán automáticamente.
+
+  Si solo cambias la variable VITE_API_URL en Vercel:
+    Vercel → tu proyecto → Settings → Environment Variables
+    → edita VITE_API_URL → Deployments → Redeploy
+
+════════════════════════════════════════════════════════════════

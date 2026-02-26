@@ -1,0 +1,232 @@
+================================================================
+  GUÍA PRUEBAS DE RENDIMIENTO - PASO A PASO
+  (Con todos los errores ya documentados y solucionados)
+================================================================
+
+Las pruebas de rendimiento valen 3 puntos en la rúbrica.
+Se hacen con la librería "autocannon" que bombardea el backend
+con muchas peticiones simultáneas y mide cuántas responde por segundo.
+
+IMPORTANTE: El frontend y el backend tienen configuraciones DIFERENTES.
+No mezcles los pasos. Lee bien cuál sección aplica a tu caso.
+
+================================================================
+  PARTE 2 — PRUEBAS EN EL FRONTEND (si el profe pide hacerlo aquí)
+================================================================
+
+El frontend SÍ tiene "type": "module" en package.json.
+Esto causó el error: "require is not defined in ES module scope".
+La solución es usar import en vez de require + flags especiales.
+
+--- PASO 1: Instalar autocannon en el frontend ---
+
+cd frontend
+npm install --save-dev autocannon @types/autocannon ts-node
+
+--- PASO 2: Crear carpeta perf en el frontend ---
+
+Crear carpeta: frontend/perf/
+Crear dos archivos adentro:
+  - frontend/perf/load-test.ts
+  - frontend/perf/tsconfig.json   ← ESTE ES CLAVE, sin él no funciona
+
+--- PASO 3: Contenido de frontend/perf/tsconfig.json ---
+
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2020"],
+    "outDir": "./dist",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true
+  },
+  "ts-node": {
+    "esm": true
+  }
+}
+
+--- PASO 4: Contenido de frontend/perf/load-test.ts ---
+
+import autocannon from "autocannon";
+import * as http from "http";
+import * as fs from "fs";
+
+const BASE_URL = "http://localhost:3000";
+
+async function getToken(): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const data = JSON.stringify({ email: "demo@demo.com", clave: "Demo1234!" });
+    const req = http.request(
+      `${BASE_URL}/api/auth/login`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Content-Length": Buffer.byteLength(data),
+        },
+      },
+      (res) => {
+        let body = "";
+        res.on("data", (chunk) => (body += chunk));
+        res.on("end", () => {
+          try {
+            resolve(JSON.parse(body).data.token);
+          } catch {
+            reject(new Error("No se pudo obtener token"));
+          }
+        });
+      }
+    );
+    req.on("error", reject);
+    req.write(data);
+    req.end();
+  });
+}
+
+function runTest(title: string, url: string, token: string): Promise<any> {
+  return new Promise((resolve, reject) => {
+    console.log(`\n🔥 Ejecutando test: ${title}`);
+    const instance = autocannon(
+      {
+        url,
+        connections: 50,
+        duration: 10,
+        headers: { Authorization: `Bearer ${token}` },
+      },
+      (err, result) => {
+        if (err) return reject(err);
+        resolve(result);
+      }
+    );
+    autocannon.track(instance, { renderProgressBar: true });
+  });
+}
+
+function formatResult(title: string, result: any): string {
+  return `
+## ${title}
+
+| Métrica          | Valor              |
+|------------------|--------------------|
+| Requests totales | ${result.requests.total} |
+| Req/s (avg)      | ${result.requests.average} |
+| Latencia avg     | ${result.latency.average}ms |
+| Latencia p99     | ${result.latency.p99}ms |
+| Errores          | ${result.errors} |
+| Timeouts         | ${result.timeouts} |
+`;
+}
+
+async function main() {
+  console.log("🚀 Iniciando pruebas de rendimiento...");
+
+  const token = await getToken();
+  console.log("✅ Token obtenido correctamente");
+
+  const results: string[] = [
+    "# Reporte de Pruebas de Rendimiento\n",
+    `**Fecha:** ${new Date().toISOString()}\n`,
+    "**Configuración:** 50 conexiones simultáneas, 10 segundos por test\n",
+  ];
+
+  // CAMBIA ESTAS URLs POR LAS ENTIDADES DE TU CASO
+  const endpoints = [
+    "/api/entidad1",
+    "/api/entidad2",
+    "/api/entidad3",
+    "/api/auth/me",
+  ];
+
+  for (const endpoint of endpoints) {
+    const result = await runTest(`GET ${endpoint}`, `${BASE_URL}${endpoint}`, token);
+    results.push(formatResult(`GET ${endpoint}`, result));
+  }
+
+  fs.writeFileSync("PERF.md", results.join("\n"));
+  console.log("\n✅ Resultados guardados en PERF.md");
+}
+
+main().catch(console.error);
+
+--- PASO 5: Script en frontend/package.json ---
+
+  "perf": "ts-node --esm --project perf/tsconfig.json perf/load-test.ts"
+
+DIFERENCIA CON BACKEND:
+  Backend:  "ts-node perf/load-test.ts"
+  Frontend: "ts-node --esm --project perf/tsconfig.json perf/load-test.ts"
+
+--- PASO 6: Correr la prueba ---
+
+1. Backend corriendo en otra terminal: npm run dev
+2. En la carpeta frontend:
+   npm run perf
+3. Se genera frontend/PERF.md
+
+================================================================
+  ERRORES COMUNES Y SUS SOLUCIONES
+================================================================
+
+ERROR 1:
+  "require is not defined in ES module scope"
+CAUSA:
+  Estás en el frontend que tiene "type":"module" en package.json
+  y usaste require() en vez de import
+SOLUCIÓN:
+  Cambia require() por import y usa los flags --esm y el tsconfig
+  especial de la carpeta perf/ (ver PARTE 2)
+
+ERROR 2:
+  "Cannot redeclare block-scoped variable 'autocannon'"
+CAUSA:
+  Mismo error que el anterior, TS no reconoce require en modo ESM
+SOLUCIÓN:
+  Igual que ERROR 1
+
+ERROR 3:
+  "Cannot find name 'console'" o "Cannot find name 'Buffer'"
+CAUSA:
+  El tsconfig no incluye los tipos de Node.js
+SOLUCIÓN:
+  En el tsconfig agregar: "lib": ["ES2020"] y "types": ["node"]
+  O instalar: npm install --save-dev @types/node
+
+ERROR 4:
+  El test corre pero el token falla / da 401
+CAUSA:
+  El campo se llama "password" en vez de "clave", o el email es incorrecto
+SOLUCIÓN:
+  Verifica con Thunder Client qué campos acepta el POST /api/auth/login
+  y ajusta el JSON en getToken()
+
+ERROR 5:
+  "ECONNREFUSED" al correr el test
+CAUSA:
+  El backend no está corriendo
+SOLUCIÓN:
+  Abre otra terminal y corre: npm run dev en el backend
+  Espera a que diga "Servidor corriendo en http://localhost:3000"
+  Luego vuelve a correr npm run perf
+
+================================================================
+  RESUMEN RÁPIDO (lo mínimo para el examen)
+================================================================
+
+EN EL BACKEND:
+  1. npm install --save-dev autocannon @types/node ts-node
+  2. Crear perf/load-test.ts  (con require, no import)
+  3. Agregar en scripts: "perf": "ts-node perf/load-test.ts"
+  4. npm run perf  (con el backend corriendo)
+
+EN EL FRONTEND:
+  1. npm install --save-dev autocannon @types/autocannon ts-node
+  2. Crear perf/load-test.ts  (con import, no require)
+  3. Crear perf/tsconfig.json  (con "module":"ESNext" y "ts-node":{"esm":true})
+  4. Agregar en scripts: "perf": "ts-node --esm --project perf/tsconfig.json perf/load-test.ts"
+  5. npm run perf  (con el backend corriendo)
+
+El archivo PERF.md que se genera es lo que entregas como evidencia.
+================================================================

@@ -9,13 +9,11 @@ import { getToken, saveToken, removeToken } from '../utils/storage'
 import client from '../api/client'
 import type { AuthContextType } from '../types/AuthContext'
 
-// ─── 1. La forma de los datos que la recepcionista maneja ──────────────────
 
 
 // ─── 2. Crear el contexto (la recepcionista en sí) ─────────────────────────
 // Se crea vacío porque aún no sabemos si hay alguien logueado
-export const AuthContext = createContext<AuthContextType | null>(null)
-
+export const AuthContext = createContext<AuthContextType | null>(null);
 // ─── 3. El proveedor — "envuelve" toda la app para que todos puedan acceder ─
 // Piénsalo como el edificio: todo lo que esté DENTRO tiene acceso a la recepcionista
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -46,10 +44,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .finally(() => setIsLoading(false))
   }, []) // El [] significa "solo ejecuta esto una vez, al montar el componente"
 
-  
+
   //funcion login;
 
-  function login (newToken: string,NewUser: User) {
+  function login(newToken: string, NewUser: User) {
     saveToken(newToken) // Guardamos la pulsera en la gaveta
     setToken(newToken)  // Actualizamos el estado con la nueva pulsera
     setUser(NewUser)    // Guardamos quién es el nuevo usuario logueado
@@ -60,17 +58,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   //funcionlogout 
 
-  function logout(){
+  function logout() {
 
     removeToken() // Borramos la pulsera de la gaveta
     setToken(null)  // Actualizamos el estado para reflejar que no hay pulsera
     setUser(null)   // No hay usuario logueado
   }
 
-    return (
-        <AuthContext.Provider value={{ user, token, isLoading, login, logout }}>
-        {children}
-        </AuthContext.Provider>
-    )
+  return (
+    <AuthContext.Provider value={{ user, token, isLoading, login, logout }}>
+      {children}
+    </AuthContext.Provider>
+  )
 }
 

@@ -1,13 +1,11 @@
 import axios from "axios";
 import { getToken, removeToken } from "../utils/storage";
 
-
-
 const cliente = axios.create({
-    baseURL: "http://localhost:3000/api",
+    baseURL: import.meta.env.VITE_API_URL ?? "http://localhost:3000/api",
     headers:{
         "Content-Type": "application/json"
-    },
+    }
 })
 
 cliente.interceptors.request.use((config)=>{
@@ -21,8 +19,7 @@ cliente.interceptors.request.use((config)=>{
 });
 
 
-cliente.interceptors.response.use(
-  (response) => response,  // Si todo bien, deja pasar la respuesta
+cliente.interceptors.response.use((response) => response,  // Si todo bien, deja pasar la respuesta
   (error) => {
     if (error.response?.status === 401) {
       removeToken()  // Bota la pulsera vencida

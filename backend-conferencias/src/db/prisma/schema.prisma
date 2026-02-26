@@ -1,0 +1,52 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           Int      @id @default(autoincrement())
+  nombre       String
+  apellido     String
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Conferencista {
+  id           Int       @id @default(autoincrement())
+  nombre       String
+  apellido     String
+  email        String?
+  telefono     String?
+  especialidad String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  reservas     Reserva[]
+}
+
+model Auditorio {
+  id        Int       @id @default(autoincrement())
+  nombre    String    @unique
+  capacidad Int
+  ubicacion String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  reservas  Reserva[]
+}
+
+model Reserva {
+  id               Int           @id @default(autoincrement())
+  conferencistaId  Int
+  auditorioId      Int
+  fecha            DateTime
+  tema             String?
+  conferencista    Conferencista @relation(fields: [conferencistaId], references: [id], onDelete: Cascade)
+  auditorio        Auditorio     @relation(fields: [auditorioId], references: [id], onDelete: Cascade)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+}

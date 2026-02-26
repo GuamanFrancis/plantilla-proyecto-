@@ -1,0 +1,6 @@
+[build]
+builder = "NIXPACKS"
+
+[deploy]
+startCommand = "npx prisma generate && npx tsc && npx prisma db push && npx ts-node src/db/seed.ts && node dist/server.js"
+restartPolicyType = "ON_FAILURE"
